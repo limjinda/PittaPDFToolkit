@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@layer theme {
+  :root {
+    --color-background: hsl(0 0% 100%);
+    --color-foreground: hsl(222 47% 11%);
+    --color-card: hsl(0 0% 100%);
+    --color-card-foreground: hsl(222 47% 11%);
+    --color-primary: hsl(221 83% 53%);
+    --color-primary-foreground: hsl(210 40% 98%);
+    --color-secondary: hsl(210 40% 96%);
+    --color-secondary-foreground: hsl(222 47% 11%);
+    --color-muted: hsl(210 40% 96%);
+    --color-muted-foreground: hsl(215 16% 47%);
+    --color-accent: hsl(210 40% 96%);
+    --color-accent-foreground: hsl(222 47% 11%);
+    --color-destructive: hsl(0 84% 60%);
+    --color-destructive-foreground: hsl(210 40% 98%);
+    --color-border: hsl(214 32% 91%);
+    --color-input: hsl(214 32% 91%);
+    --color-ring: hsl(221 83% 53%);
+    --radius: 0.5rem;
+
+    /* App-specific tokens */
+    --toolbar-height: 48px;
+    --tabbar-height: 40px;
+    --sidebar-width: 200px;
+    --thumbnail-bg: hsl(210 40% 98%);
+    --viewer-bg: hsl(220 13% 18%);
+    --page-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  .dark {
+    --color-background: hsl(222 47% 8%);
+    --color-foreground: hsl(210 40% 98%);
+    --color-card: hsl(222 47% 11%);
+    --color-card-foreground: hsl(210 40% 98%);
+    --color-primary: hsl(217 91% 60%);
+    --color-primary-foreground: hsl(222 47% 11%);
+    --color-secondary: hsl(217 33% 17%);
+    --color-secondary-foreground: hsl(210 40% 98%);
+    --color-muted: hsl(217 33% 17%);
+    --color-muted-foreground: hsl(215 20% 65%);
+    --color-accent: hsl(217 33% 17%);
+    --color-accent-foreground: hsl(210 40% 98%);
+    --color-destructive: hsl(0 63% 31%);
+    --color-destructive-foreground: hsl(210 40% 98%);
+    --color-border: hsl(217 33% 17%);
+    --color-input: hsl(217 33% 17%);
+    --color-ring: hsl(224 76% 48%);
+
+    --thumbnail-bg: hsl(222 47% 12%);
+    --viewer-bg: hsl(222 47% 6%);
+    --page-shadow: 0 4px 32px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Shadcn CSS variable compatibility layer */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 224 76% 48%;
+  }
+}
+
+/* Base element styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  user-select: none;
+  margin: 0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* PDF page container in viewer */
+.pdf-page-container {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.pdf-page-canvas {
+  box-shadow: var(--page-shadow);
+  border-radius: 2px;
+  display: block;
+}
