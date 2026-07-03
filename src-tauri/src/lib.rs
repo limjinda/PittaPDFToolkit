@@ -84,6 +84,14 @@ async fn save_pdf(app: tauri::AppHandle, default_name: String, bytes: Vec<u8>) -
     }
 }
 
+/// Reads the compile-time embedded Sarabun-Regular font that supports Thai/Unicode characters
+/// and returns its raw bytes.
+#[command]
+async fn read_system_font() -> Result<Vec<u8>, String> {
+    let font_bytes = include_bytes!("../fonts/Sarabun-Regular.ttf");
+    Ok(font_bytes.to_vec())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -91,7 +99,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![open_pdfs, save_pdf, read_pdf_by_path])
+        .invoke_handler(tauri::generate_handler![
+            open_pdfs,
+            save_pdf,
+            read_pdf_by_path,
+            read_system_font
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

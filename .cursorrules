@@ -1,0 +1,110 @@
+# PittaPDFToolkit — Project Rules
+
+## Stack
+- Tauri v2 (Rust backend) + React 19 + TypeScript (strict) + Vite 7
+- Tailwind CSS v4, Zustand + Zundo, pdf.js, pdf-lib
+- @tauri-apps/plugin-store for persistence
+
+---
+
+## Coding Rules
+
+### TypeScript
+- Strict mode enforced — no `any`, no unsafe type assertions
+- Prefer `type` for shapes, `interface` when extension is intended
+- Export types explicitly with `export type { … }`
+
+### React
+- Functional components only — no class components
+- Use hooks for all stateful logic
+- Avoid prop drilling — use Zustand store or context if a value crosses more than two component levels
+- Prefer composition over growing a single large component
+
+### File & Feature Structure
+- Each feature lives under `src/features/<feature-name>/`
+- Shared UI primitives → `src/components/ui/`
+- Cross-feature utilities → `src/lib/`
+- Global state → `src/store/`
+
+### Documentation
+- Every exported function MUST have a JSDoc comment (what it does, params, return, throws)
+- No commented-out dead code — delete it, Git preserves history
+- Keep comments current — stale comments are worse than none
+
+### Size Limits
+- Component files: ≤ 250 lines
+- Function bodies: ≤ 40 lines when possible
+- When a limit is reached, extract sub-components or custom hooks
+
+### Constants
+- No magic numbers — every non-obvious literal must be a named constant
+- Use SCREAMING_SNAKE_CASE for constants
+
+### Logic
+- No duplicated business logic — extract shared logic to `src/lib/`
+- Keep business logic out of components; put it in hooks or lib functions
+
+### Async & Errors
+- Use async/await — avoid raw .then() chains
+- Handle every possible error with try/catch
+- Never silently swallow exceptions — at minimum log them, ideally surface to UI
+- Never block the UI thread — all I/O and heavy computation must be async
+
+### Testability
+- Keep Tauri `invoke` and file I/O behind thin wrappers in `src/lib/tauri/` so they can be mocked
+- Pure transformation functions must have zero dependency on Tauri APIs
+
+### Naming
+- Descriptive names that explain *what*, not *how*
+- Files: `camelCase.ts` for utilities, `PascalCase.tsx` for components
+- Constants: `SCREAMING_SNAKE_CASE`
+- Types/Interfaces: `PascalCase`
+- Hooks: `useDescriptiveName`
+
+### Dependencies
+- No unnecessary packages — justify every new dependency before adding it
+
+---
+
+## UI Design Rules
+
+### Philosophy
+Productivity tool, not a showcase. Make the user faster. When in doubt, do less.
+
+### Style
+- Minimal — show only what is needed for the current task
+- Clean — generous whitespace, clear hierarchy, no visual noise
+- Flat — flat shapes, single-colour fills, no skeuomorphism
+- Native feeling — match desktop OS conventions
+
+### Hard Avoids
+- NO glassmorphism — no `backdrop-blur` on interactive surfaces
+- NO fancy animations — no bounces, springs, or attention-seeking transitions
+- NO gradient overload — gradients only as subtle page backgrounds
+- NO heavy shadows — `shadow-sm` at most
+
+### Layout
+- Toolbar: frequently used actions only — secondary actions go in context menus
+- Everything reachable within two clicks from the main view
+- Never hide critical functionality behind hover-only states
+
+### Motion
+- All transitions ≤ 150ms
+- Only use `transition-colors` and `transition-opacity` for micro-feedback
+- Never animate layout shifts (height, width, position changes on lists)
+- Instant state changes for explicit user actions (clicks, shortcuts)
+
+### Colour & Theme
+- Support light mode, dark mode, and system preference
+- Use CSS custom properties from the token layer — never hardcode hex values
+- All colour pairs must meet WCAG AA contrast (4.5:1 text, 3:1 UI)
+
+### Display
+- Support High DPI / Retina (2×) — SVG icons only, never fixed-size raster
+- Layout must hold at 125%, 150%, 200% OS display scaling
+- Test at minimum window size (800×600) and maximised
+
+---
+
+## Full reference
+See `CONTRIBUTING.md` for detailed examples and rationale.

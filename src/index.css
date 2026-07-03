@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Sarabun';
+  src: url('/fonts/Sarabun-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Sarabun';
+  src: url('/fonts/Sarabun-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
 @layer theme {
   :root {
     --color-background: hsl(0 0% 100%);

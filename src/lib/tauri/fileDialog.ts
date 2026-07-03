@@ -1,4 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
 
 export interface OpenedFile {
   path: string;
@@ -24,9 +26,35 @@ export async function savePdf(
   defaultName: string,
   bytes: Uint8Array
 ): Promise<string | null> {
-  const result = await invoke<string | null>("save_pdf", {
-    defaultName,
-    bytes: Array.from(bytes),
+  const path = await save({
+    title: "Save PDF as",
+    defaultPath: defaultName,
+    filters: [{ name: "PDF Files", extensions: ["pdf"] }],
   });
-  return result;
+  if (path) {
+    await writeFile(path, bytes);
+  }
+  return path;
+}
+
+let cachedFontBytes: Uint8Array | null = null;
+
+/**
+ * Loads Sarabun-Regular.ttf font bytes from the public directory.
+ * Caches the result in memory for subsequent saves.
+ */
+export async function getSystemFontBytes(): Promise<Uint8Array | null> {
+  if (cachedFontBytes) return cachedFontBytes;
+  try {
+    const response = await fetch("/fonts/Sarabun-Regular.ttf");
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    cachedFontBytes = new Uint8Array(arrayBuffer);
+    return cachedFontBytes;
+  } catch (error) {
+    console.error("Failed to load Sarabun font:", error);
+    return null;
+  }
 }

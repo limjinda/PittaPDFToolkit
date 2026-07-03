@@ -1,5 +1,6 @@
 import { useRef, memo } from "react";
 import { usePdfRenderer } from "./hooks/usePdfRenderer";
+import { AnnotationLayer } from "@/features/annotation/AnnotationLayer";
 import type { WorkspacePage, SourceDoc } from "@/store/workspaceStore";
 
 interface PageCanvasProps {
@@ -9,6 +10,10 @@ interface PageCanvasProps {
   pageIndex: number;
 }
 
+/**
+ * Renders a single PDF page as a <canvas> with an annotation overlay on top.
+ * The overlay div is absolutely positioned to cover the canvas exactly.
+ */
 const PageCanvas = memo(function PageCanvas({
   page,
   sourceDocs,
@@ -19,11 +24,12 @@ const PageCanvas = memo(function PageCanvas({
   usePdfRenderer({ page, sourceDocs, scale, canvasRef });
 
   return (
-    <div
-      className="pdf-page-container"
-      data-page-index={pageIndex}
-    >
-      <canvas ref={canvasRef} className="pdf-page-canvas" />
+    <div className="pdf-page-container" data-page-index={pageIndex}>
+      {/* Relative wrapper so AnnotationLayer can use absolute positioning */}
+      <div style={{ position: "relative", alignSelf: "start" }}>
+        <canvas ref={canvasRef} className="pdf-page-canvas" />
+        <AnnotationLayer pageId={page.id} scale={scale} />
+      </div>
     </div>
   );
 });
@@ -36,6 +42,7 @@ interface ViewerPaneProps {
   currentPage: number;
 }
 
+/** Scrollable viewer that renders one PageCanvas per workspace page. */
 export function ViewerPane({
   pages,
   sourceDocs,

@@ -133,6 +133,10 @@ export const useWorkspaceStore = create<FullStore>()(
           activeWorkspaceId: workspaceId,
         }));
 
+        setTimeout(() => {
+          useWorkspaceStore.temporal.getState().clear();
+        }, 0);
+
         return workspaceId;
       },
 
