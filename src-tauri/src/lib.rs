@@ -45,6 +45,21 @@ async fn open_pdfs(app: tauri::AppHandle) -> Result<Vec<OpenedFile>, String> {
     }
 }
 
+/// Reads a single PDF file from an absolute path and returns its bytes.
+/// Used for files obtained via Tauri's native drag-drop events,
+/// where we receive real OS paths rather than browser File objects.
+#[command]
+async fn read_pdf_by_path(path: String) -> Result<OpenedFile, String> {
+    let bytes = fs::read(&path)
+        .map_err(|e| format!("Failed to read {}: {}", path, e))?;
+    let name = std::path::Path::new(&path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown.pdf")
+        .to_string();
+    Ok(OpenedFile { path, name, bytes })
+}
+
 /// Opens a native save dialog and writes bytes to the chosen path.
 #[command]
 async fn save_pdf(app: tauri::AppHandle, default_name: String, bytes: Vec<u8>) -> Result<Option<String>, String> {
@@ -76,7 +91,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![open_pdfs, save_pdf])
+        .invoke_handler(tauri::generate_handler![open_pdfs, save_pdf, read_pdf_by_path])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

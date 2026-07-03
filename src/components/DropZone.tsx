@@ -1,4 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { invoke } from "@tauri-apps/api/core";
 import { useWorkspaceStore, useActiveWorkspace } from "@/store/workspaceStore";
 import { loadPdfDoc } from "@/lib/pdf/pdfLoader";
 import { addRecentFile } from "@/lib/tauri/recentStore";
@@ -9,6 +11,12 @@ interface DropZoneProps {
 
 /**
  * Full-window drag & drop overlay for PDF files.
+ *
+ * Uses Tauri's native onDragDropEvent (event.payload.type):
+ *   "enter" | "over" → show overlay
+ *   "drop"           → read files and process
+ *   "leave"          → hide overlay
+ *
  * When a PDF is dropped onto an existing workspace, merges it in.
  * When dropped on the empty state, creates a new workspace.
  */
@@ -17,29 +25,36 @@ export function DropZone({ children }: DropZoneProps) {
   const { createWorkspace, mergePdfs } = useWorkspaceStore();
   const activeWorkspace = useActiveWorkspace();
 
-  const processFiles = useCallback(
-    async (fileList: FileList) => {
-      const pdfs = Array.from(fileList).filter((f) =>
-        f.name.toLowerCase().endsWith(".pdf")
-      );
-      if (pdfs.length === 0) return;
+  // Keep a ref so the Tauri listener closure always sees the latest value
+  const activeWorkspaceRef = useRef(activeWorkspace);
+  useEffect(() => {
+    activeWorkspaceRef.current = activeWorkspace;
+  }, [activeWorkspace]);
+
+  const processEntries = useCallback(
+    async (
+      entries: { path: string; name: string; bytes: Uint8Array }[]
+    ) => {
+      if (entries.length === 0) return;
 
       const withNumPages = await Promise.all(
-        pdfs.map(async (file) => {
-          const arrayBuffer = await file.arrayBuffer();
-          const bytes = new Uint8Array(arrayBuffer);
-          const doc = await loadPdfDoc(file.name + file.size, bytes);
+        entries.map(async (entry) => {
+          const doc = await loadPdfDoc(
+            entry.path + entry.bytes.length,
+            entry.bytes
+          );
           return {
-            path: file.name, // no real path in browser drop, use name
-            name: file.name,
-            bytes,
+            path: entry.path,
+            name: entry.name,
+            bytes: entry.bytes,
             numPages: doc.numPages,
           };
         })
       );
 
-      if (activeWorkspace) {
-        mergePdfs(activeWorkspace.id, withNumPages);
+      const ws = activeWorkspaceRef.current;
+      if (ws) {
+        mergePdfs(ws.id, withNumPages);
       } else {
         createWorkspace(withNumPages);
         for (const f of withNumPages) {
@@ -52,37 +67,72 @@ export function DropZone({ children }: DropZoneProps) {
         }
       }
     },
-    [activeWorkspace, createWorkspace, mergePdfs]
+    [createWorkspace, mergePdfs]
   );
 
-  function handleDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.types.includes("Files")) {
-      setIsDragOver(true);
-    }
-  }
+  // ── Tauri native file-drop listener ────────────────────────────────────────
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
 
-  function handleDragLeave(e: React.DragEvent) {
-    // Only hide if leaving the window
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-    setIsDragOver(false);
-  }
+    getCurrentWebview()
+      .onDragDropEvent(async (event) => {
+        const { type } = event.payload as {
+          type: "enter" | "over" | "drop" | "leave";
+          paths?: string[];
+        };
 
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-    processFiles(e.dataTransfer.files);
-  }
+        if (type === "enter" || type === "over") {
+          setIsDragOver(true);
+          return;
+        }
+
+        if (type === "leave") {
+          setIsDragOver(false);
+          return;
+        }
+
+        if (type === "drop") {
+          setIsDragOver(false);
+
+          const { paths = [] } = event.payload as { paths: string[] };
+          const pdfPaths = paths.filter((p) =>
+            p.toLowerCase().endsWith(".pdf")
+          );
+
+          if (pdfPaths.length === 0) return;
+
+          try {
+            const entries = await Promise.all(
+              pdfPaths.map(async (filePath) => {
+                const file = await invoke<{
+                  path: string;
+                  name: string;
+                  bytes: number[];
+                }>("read_pdf_by_path", { path: filePath });
+                return {
+                  path: file.path,
+                  name: file.name,
+                  bytes: new Uint8Array(file.bytes),
+                };
+              })
+            );
+            await processEntries(entries);
+          } catch (err) {
+            console.error("Failed to read dropped file(s):", err);
+          }
+        }
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [processEntries]);
 
   return (
-    <div
-      className="relative flex flex-col h-full w-full"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
+    <div className="relative flex flex-col h-full w-full">
       {children}
 
       {/* Drop overlay */}
@@ -92,7 +142,9 @@ export function DropZone({ children }: DropZoneProps) {
           <div className="relative z-10 text-center">
             <div className="text-5xl mb-3">📄</div>
             <p className="text-lg font-semibold text-primary">
-              {activeWorkspace ? "Merge PDF into current document" : "Drop PDF to open"}
+              {activeWorkspace
+                ? "Merge PDF into current document"
+                : "Drop PDF to open"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               Release to {activeWorkspace ? "merge" : "open"}
