@@ -1,0 +1,105 @@
+Created At: 2026-07-04T10:04:46Z
+Completed At: 2026-07-04T10:04:46Z
+The following changes were made by the multi_replace_file_content tool to: c:\Users\Jirayu\_playground\PittaPDFToolkit\src-tauri\src\lib.rs. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -92,243 +92,7 @@
+     Ok(font_bytes.to_vec())
+ }
+ 
+-/// Helper function that builds a list of potential Ghostscript executable paths.
+-/// First searches standard environment PATH executables, then scans default
+-/// Windows installation directories (C:\\Program Files\\gs\\*\\bin\\*).
+-fn get_gs_executables() -> Vec<String> {
+-    let mut executables = vec![
+-        "gswin64c".to_string(),
+-        "gswin32c".to_string(),
+-        "gs".to_string(),
+-    ];
+-
+-    let pf_paths = ["C:\\Program Files\\gs", "C:\\Program Files (x86)\\gs"];
+-    for pf in &pf_paths {
+-        if let Ok(entries) = std::fs::read_dir(pf) {
+-            for entry in entries.flatten() {
+-                if let Ok(ft) = entry.file_type() {
+-                    if ft.is_dir() {
+-                        let bin = entry.path().join("bin");
+-                        for name in &["gswin64c.exe", "gswin32c.exe", "gs.exe"] {
+-                            let p = bin.join(name);
+-                            if p.exists() {
+-                                executables.push(p.to_string_lossy().to_string());
+-                            }
+-                        }
+-                    }
+-                }
+-            }
+-        }
+-    }
+-    executables
+-}
+-
+-/// Finds a writable directory whose path contains only ASCII characters.
+-/// This prevents Ghostscript from crashing due to PostScript escape character parsing
+-/// on Windows machines with non-ASCII (e.g. Thai) usernames.
+-fn get_ascii_temp_dir() -> std::path::PathBuf {
+-    if let Ok(t) = std::env::var("TEMP") {
+-        if t.chars().all(|c| c.is_ascii()) {
+-            return std::path::PathBuf::from(t);
+-        }
+-
+<truncated 6127 bytes>
+rr_str = String::from_utf8_lossy(&out.stderr).to_string();
+-                    last_error = format!("stdout: {}\nstderr: {}", stdout_str, stderr_str);
+-                }
+-            }
+-            Err(e) => {
+-                last_error = e.to_string();
+-            }
+-        }
+-    }
+-
+-    if executed {
+-        if use_temp {
+-            let temp_out = std::path::PathBuf::from(&run_output);
+-            if let Err(e) = std::fs::copy(&temp_out, &output_path) {
+-                let _ = std::fs::remove_file(&run_input);
+-                let _ = std::fs::remove_file(&temp_out);
+-                return Err(format!("Failed to copy encrypted PDF to target: {}", e));
+-            }
+-            let _ = std::fs::remove_file(&run_input);
+-            let _ = std::fs::remove_file(&temp_out);
+-        }
+-        Ok(())
+-    } else {
+-        if use_temp {
+-            let _ = std::fs::remove_file(&run_input);
+-            let _ = std::fs::remove_file(&run_output);
+-        }
+-        Err(format!(
+-            "Ghostscript encryption failed. Tried paths: {:?}. Last error: {}",
+-            executables, last_error
+-        ))
+-    }
+-}
++
+ 
+ #[cfg_attr(mobile, tauri::mobile_entry_point)]
+ pub fn run() {
+@@ -335,4 +335,3 @@
+-        .plugin(tauri_plugin_opener::init())
+         .plugin(tauri_plugin_dialog::init())
+         .plugin(tauri_plugin_fs::init())
+         .plugin(tauri_plugin_store::Builder::new().build())
+@@ -339,9 +339,7 @@
+             open_pdfs,
+             save_pdf,
+             read_pdf_by_path,
+-            read_system_font,
+-            compress_pdf,
+-            encrypt_pdf
++            read_system_font
+         ])
+         .run(tauri::generate_context!())
+         .expect("error while running tauri application");
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.

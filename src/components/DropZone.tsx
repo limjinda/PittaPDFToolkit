@@ -99,7 +99,20 @@ export function DropZone({ children }: DropZoneProps) {
             p.toLowerCase().endsWith(".pdf")
           );
 
-          if (pdfPaths.length === 0) return;
+          if (pdfPaths.length === 0) {
+            const imagePaths = paths.filter((p) =>
+              /\.(png|jpe?g)$/i.test(p)
+            );
+            if (imagePaths.length > 0) {
+              window.dispatchEvent(new CustomEvent("open-toolkit"));
+              window.dispatchEvent(new CustomEvent("open-tool", { detail: "image-to-pdf" }));
+              // Small delay to let the toolkit tool mount and attach its listeners
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent("handle-dropped-images", { detail: imagePaths }));
+              }, 100);
+            }
+            return;
+          }
 
           try {
             const entries = await Promise.all(

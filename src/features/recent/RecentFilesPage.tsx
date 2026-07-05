@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useWorkspaceStore } from "@/store/workspaceStore";
 import { loadPdfDoc } from "@/lib/pdf/pdfLoader";
 import { getRecentFiles, removeRecentFile, type RecentFile } from "@/lib/tauri/recentStore";
@@ -7,35 +7,47 @@ import { addRecentFile } from "@/lib/tauri/recentStore";
 import { formatRelativeTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-export function RecentFilesPage() {
+interface RecentFilesPageProps {
+  onViewChange: (v: "viewer" | "grid" | "toolkit") => void;
+}
+
+export function RecentFilesPage({ onViewChange }: RecentFilesPageProps) {
   const { createWorkspace } = useWorkspaceStore();
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
+  const openingRef = useRef(false);
 
   useEffect(() => {
     getRecentFiles().then(setRecentFiles);
   }, []);
 
   async function handleOpen() {
-    const files = await openPdfs();
-    if (files.length === 0) return;
+    if (openingRef.current) return;
+    openingRef.current = true;
+    try {
+      const files = await openPdfs();
+      if (files.length === 0) return;
 
-    const withNumPages = await Promise.all(
-      files.map(async (f) => {
-        const bytes = new Uint8Array(f.bytes);
-        const doc = await loadPdfDoc(f.path, bytes);
-        return { path: f.path, name: f.name, bytes, numPages: doc.numPages };
-      })
-    );
+      const withNumPages = await Promise.all(
+        files.map(async (f) => {
+          const bytes = new Uint8Array(f.bytes);
+          const docId = f.path;
+          const doc = await loadPdfDoc(docId, bytes);
+          return { path: f.path, name: f.name, bytes, numPages: doc.numPages };
+        })
+      );
 
-    createWorkspace(withNumPages);
-
-    for (const f of withNumPages) {
-      await addRecentFile({
-        path: f.path,
-        name: f.name,
-        pageCount: f.numPages,
-        lastOpened: Date.now(),
-      });
+      const wsId = createWorkspace(withNumPages);
+      for (const f of withNumPages) {
+        await addRecentFile({
+          path: f.path,
+          name: f.name,
+          pageCount: f.numPages,
+          lastOpened: Date.now(),
+        });
+      }
+      return wsId;
+    } finally {
+      openingRef.current = false;
     }
   }
 
@@ -86,14 +98,24 @@ export function RecentFilesPage() {
         </p>
       </div>
 
-      {/* Open button */}
-      <Button
-        size="lg"
-        onClick={handleOpen}
-        className="mb-10 gap-2 px-8 text-base font-semibold shadow-lg"
-      >
-        📂 Open PDF
-      </Button>
+      {/* Buttons */}
+      <div className="flex items-center gap-4 mb-10">
+        <Button
+          size="lg"
+          onClick={handleOpen}
+          className="gap-2 px-8 text-base font-semibold shadow-lg"
+        >
+          📂 Open PDF
+        </Button>
+        <Button
+          size="lg"
+          variant="outline"
+          onClick={() => onViewChange("toolkit")}
+          className="gap-2 px-8 text-base font-semibold"
+        >
+          🛠️ PDF Toolkit
+        </Button>
+      </div>
 
       {/* Recent files */}
       {recentFiles.length > 0 && (

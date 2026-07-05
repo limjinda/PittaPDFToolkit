@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useAnnotationStore } from "@/store/annotationStore";
 import type { HighlightAnnotation } from "../model/annotationTypes";
 
@@ -24,6 +24,8 @@ export function HighlightRenderer({
 }: Props) {
   const { updateAnnotation, deleteAnnotation } = useAnnotationStore();
   const outline = isSelected ? "1.5px dashed var(--color-primary)" : "none";
+
+  const [tempSize, setTempSize] = useState<{ width: number; height: number } | null>(null);
 
   const resizeState = useRef<{
     startClientX: number;
@@ -52,7 +54,7 @@ export function HighlightRenderer({
     const dx = (e.clientX - rs.startClientX) / rect.width;
     const dy = (e.clientY - rs.startClientY) / rect.height;
     
-    updateAnnotation(annotation.id, {
+    setTempSize({
       width: Math.max(0.01, rs.origWidth + dx),
       height: Math.max(0.01, rs.origHeight + dy),
     });
@@ -60,8 +62,18 @@ export function HighlightRenderer({
 
   function handleResizeUp(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.releasePointerCapture(e.pointerId);
+    if (resizeState.current && tempSize) {
+      updateAnnotation(annotation.id, {
+        width: tempSize.width,
+        height: tempSize.height,
+      });
+    }
     resizeState.current = null;
+    setTempSize(null);
   }
+
+  const w = tempSize ? tempSize.width : annotation.width;
+  const h = tempSize ? tempSize.height : annotation.height;
 
   return (
     <div
@@ -69,8 +81,8 @@ export function HighlightRenderer({
         position: "absolute",
         left: `${annotation.x * 100}%`,
         top: `${annotation.y * 100}%`,
-        width: `${annotation.width * 100}%`,
-        height: `${annotation.height * 100}%`,
+        width: `${w * 100}%`,
+        height: `${h * 100}%`,
         outline,
         outlineOffset: 1,
         borderRadius: 1,

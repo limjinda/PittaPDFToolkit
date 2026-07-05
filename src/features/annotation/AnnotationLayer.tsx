@@ -61,6 +61,8 @@ export function AnnotationLayer({ pageId, scale }: Props) {
     return [fx, fy];
   }
 
+  const [dragState, setDragState] = useState<{ id: string; x: number; y: number } | null>(null);
+
   // ── Blank area pointer events ──────────────────────────────────────────────
 
   function handleLayerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -178,14 +180,23 @@ export function AnnotationLayer({ pageId, scale }: Props) {
     const rect = layer.getBoundingClientRect();
     const dx = (e.clientX - ms.startClientX) / rect.width;
     const dy = (e.clientY - ms.startClientY) / rect.height;
-    store.updateAnnotation(ms.annotationId, {
+    setDragState({
+      id: ms.annotationId,
       x: Math.max(0, Math.min(0.97, ms.origX + dx)),
       y: Math.max(0, Math.min(0.97, ms.origY + dy)),
     });
   }
 
   function handleAnnotationPointerUp() {
+    const ms = moveState.current;
+    if (ms && dragState && ms.annotationId === dragState.id) {
+      store.updateAnnotation(ms.annotationId, {
+        x: dragState.x,
+        y: dragState.y,
+      });
+    }
     moveState.current = null;
+    setDragState(null);
   }
 
   // ── Cursor style ───────────────────────────────────────────────────────────
@@ -226,32 +237,36 @@ export function AnnotationLayer({ pageId, scale }: Props) {
           onPointerUp: handleAnnotationPointerUp,
         };
 
-        if (ann.kind === "text") {
+        const renderedAnn = dragState && dragState.id === ann.id
+          ? { ...ann, x: dragState.x, y: dragState.y }
+          : ann;
+
+        if (renderedAnn.kind === "text") {
           return (
             <TextRenderer
-              key={ann.id}
-              annotation={ann}
+              key={renderedAnn.id}
+              annotation={renderedAnn}
               scale={scale}
               isSelected={isSelected}
               {...handlers}
             />
           );
         }
-        if (ann.kind === "checkmark") {
+        if (renderedAnn.kind === "checkmark") {
           return (
             <CheckmarkRenderer
-              key={ann.id}
-              annotation={ann}
+              key={renderedAnn.id}
+              annotation={renderedAnn}
               isSelected={isSelected}
               {...handlers}
             />
           );
         }
-        if (ann.kind === "highlight") {
+        if (renderedAnn.kind === "highlight") {
           return (
             <HighlightRenderer
-              key={ann.id}
-              annotation={ann}
+              key={renderedAnn.id}
+              annotation={renderedAnn}
               isSelected={isSelected}
               {...handlers}
             />

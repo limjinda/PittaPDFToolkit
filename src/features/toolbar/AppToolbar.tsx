@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useStore } from "zustand";
 import { useWorkspaceStore, useActiveWorkspace } from "@/store/workspaceStore";
 import { useUIStore } from "@/store/uiStore";
@@ -15,10 +15,25 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  FolderOpen,
+  Wrench,
+  FilePlus2,
+  Save,
+  Undo2,
+  Redo2,
+  ZoomIn,
+  ZoomOut,
+  Sun,
+  Moon,
+  Monitor,
+  LayoutGrid,
+  FileText
+} from "lucide-react";
 
 interface AppToolbarProps {
-  view: "viewer" | "grid";
-  onViewChange: (v: "viewer" | "grid") => void;
+  view: "viewer" | "grid" | "toolkit";
+  onViewChange: (v: "viewer" | "grid" | "toolkit") => void;
 }
 
 export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
@@ -28,6 +43,7 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
   const annotationUndoState = useStore(useAnnotationStore.temporal, (s) => s);
   const { zoom, zoomIn, zoomOut, resetZoom, theme, toggleTheme } = useUIStore();
   const [saving, setSaving] = useState(false);
+  const openingRef = useRef(false);
 
   const canUndo = annotationUndoState.pastStates.length > 0 || workspaceUndoState.pastStates.length > 0;
   const canRedo = annotationUndoState.futureStates.length > 0 || workspaceUndoState.futureStates.length > 0;
@@ -49,44 +65,56 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
   }
 
   async function handleOpen() {
-    const files = await openPdfs();
-    if (files.length === 0) return;
+    if (openingRef.current) return;
+    openingRef.current = true;
+    try {
+      const files = await openPdfs();
+      if (files.length === 0) return;
 
-    const withNumPages = await Promise.all(
-      files.map(async (f) => {
-        const bytes = new Uint8Array(f.bytes);
-        const docId = f.path;
-        const doc = await loadPdfDoc(docId, bytes);
-        return { path: f.path, name: f.name, bytes, numPages: doc.numPages };
-      })
-    );
+      const withNumPages = await Promise.all(
+        files.map(async (f) => {
+          const bytes = new Uint8Array(f.bytes);
+          const docId = f.path;
+          const doc = await loadPdfDoc(docId, bytes);
+          return { path: f.path, name: f.name, bytes, numPages: doc.numPages };
+        })
+      );
 
-    const wsId = createWorkspace(withNumPages);
-    for (const f of withNumPages) {
-      await addRecentFile({
-        path: f.path,
-        name: f.name,
-        pageCount: f.numPages,
-        lastOpened: Date.now(),
-      });
+      const wsId = createWorkspace(withNumPages);
+      for (const f of withNumPages) {
+        await addRecentFile({
+          path: f.path,
+          name: f.name,
+          pageCount: f.numPages,
+          lastOpened: Date.now(),
+        });
+      }
+      return wsId;
+    } finally {
+      openingRef.current = false;
     }
-    return wsId;
   }
 
   async function handleMerge() {
     if (!workspace) return;
-    const files = await openPdfs();
-    if (files.length === 0) return;
+    if (openingRef.current) return;
+    openingRef.current = true;
+    try {
+      const files = await openPdfs();
+      if (files.length === 0) return;
 
-    const withNumPages = await Promise.all(
-      files.map(async (f) => {
-        const bytes = new Uint8Array(f.bytes);
-        const doc = await loadPdfDoc(f.path, bytes);
-        return { path: f.path, name: f.name, bytes, numPages: doc.numPages };
-      })
-    );
+      const withNumPages = await Promise.all(
+        files.map(async (f) => {
+          const bytes = new Uint8Array(f.bytes);
+          const doc = await loadPdfDoc(f.path, bytes);
+          return { path: f.path, name: f.name, bytes, numPages: doc.numPages };
+        })
+      );
 
-    mergePdfs(workspace.id, withNumPages);
+      mergePdfs(workspace.id, withNumPages);
+    } finally {
+      openingRef.current = false;
+    }
   }
 
   async function handleSave() {
@@ -111,8 +139,8 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
 
   const zoomPercent = Math.round(zoom * 100);
 
-  const themeIcon =
-    theme === "light" ? "☀️" : theme === "dark" ? "🌙" : "🖥";
+  const ThemeIcon =
+    theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
 
   return (
     <div
@@ -122,14 +150,25 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
       {/* File operations */}
       <Tip label="Open PDF (Ctrl+O)">
         <Button variant="ghost" size="sm" onClick={handleOpen} className="gap-1.5 text-sm">
-          <span>📂</span> Open
+          <FolderOpen className="w-4 h-4" /> Open
+        </Button>
+      </Tip>
+
+      <Tip label="PDF Toolkit (Compress, Protect, Images, etc.)">
+        <Button
+          variant={view === "toolkit" ? "secondary" : "ghost"}
+          size="sm"
+          onClick={() => onViewChange(view === "toolkit" ? "viewer" : "toolkit")}
+          className="gap-1.5 text-sm"
+        >
+          <Wrench className="w-4 h-4" /> Toolkit
         </Button>
       </Tip>
 
       {workspace && (
         <Tip label="Merge another PDF into this document">
           <Button variant="ghost" size="sm" onClick={handleMerge} className="gap-1.5 text-sm">
-            <span>⊕</span> Merge
+            <FilePlus2 className="w-4 h-4" /> Merge
           </Button>
         </Tip>
       )}
@@ -143,7 +182,7 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
             disabled={saving}
             className={cn("gap-1.5 text-sm", workspace.isDirty && "text-primary font-semibold")}
           >
-            <span>💾</span> {saving ? "Saving…" : "Save As"}
+            <Save className="w-4 h-4" /> {saving ? "Saving…" : "Save As"}
             {workspace.isDirty && <span className="w-1.5 h-1.5 rounded-full bg-primary ml-0.5" />}
           </Button>
         </Tip>
@@ -158,9 +197,9 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
           size="icon"
           onClick={handleUndo}
           disabled={!canUndo}
-          className="w-8 h-8 text-base"
+          className="w-8 h-8"
         >
-          ↺
+          <Undo2 className="w-4 h-4" />
         </Button>
       </Tip>
       <Tip label="Redo (Ctrl+Shift+Z)">
@@ -169,9 +208,9 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
           size="icon"
           onClick={handleRedo}
           disabled={!canRedo}
-          className="w-8 h-8 text-base"
+          className="w-8 h-8"
         >
-          ↻
+          <Redo2 className="w-4 h-4" />
         </Button>
       </Tip>
 
@@ -184,24 +223,24 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
             <button
               onClick={() => onViewChange("viewer")}
               className={cn(
-                "px-2.5 py-1 text-xs transition-colors",
+                "px-2.5 py-1 text-xs transition-colors flex items-center gap-1.5",
                 view === "viewer"
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-accent text-muted-foreground"
               )}
             >
-              📄 Read
+              <FileText className="w-3.5 h-3.5" /> Read
             </button>
             <button
               onClick={() => onViewChange("grid")}
               className={cn(
-                "px-2.5 py-1 text-xs transition-colors border-l border-border",
+                "px-2.5 py-1 text-xs transition-colors border-l border-border flex items-center gap-1.5",
                 view === "grid"
                   ? "bg-primary text-primary-foreground"
                   : "hover:bg-accent text-muted-foreground"
               )}
             >
-              ⊞ Edit
+              <LayoutGrid className="w-3.5 h-3.5" /> Edit
             </button>
           </div>
           <Separator orientation="vertical" className="h-5 mx-1" />
@@ -215,8 +254,8 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
       {workspace && view === "viewer" && (
         <div className="flex items-center gap-0.5">
           <Tip label="Zoom out (Ctrl+-)">
-            <Button variant="ghost" size="icon" onClick={zoomOut} className="w-7 h-7 text-base">
-              −
+            <Button variant="ghost" size="icon" onClick={zoomOut} className="w-7 h-7">
+              <ZoomOut className="w-3.5 h-3.5" />
             </Button>
           </Tip>
           <button
@@ -226,8 +265,8 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
             {zoomPercent}%
           </button>
           <Tip label="Zoom in (Ctrl++)">
-            <Button variant="ghost" size="icon" onClick={zoomIn} className="w-7 h-7 text-base">
-              +
+            <Button variant="ghost" size="icon" onClick={zoomIn} className="w-7 h-7">
+              <ZoomIn className="w-3.5 h-3.5" />
             </Button>
           </Tip>
           <Separator orientation="vertical" className="h-5 mx-1" />
@@ -236,8 +275,8 @@ export function AppToolbar({ view, onViewChange }: AppToolbarProps) {
 
       {/* Theme toggle */}
       <Tip label="Toggle theme">
-        <Button variant="ghost" size="icon" onClick={toggleTheme} className="w-8 h-8 text-base">
-          {themeIcon}
+        <Button variant="ghost" size="icon" onClick={toggleTheme} className="w-8 h-8">
+          <ThemeIcon className="w-4 h-4" />
         </Button>
       </Tip>
     </div>
